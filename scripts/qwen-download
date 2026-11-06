@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+: "${HF_REPO:=unsloth/Qwen3.8-Flash-Next-GGUF}"
+: "${HF_REVISION:=main}"
+: "${HF_PATTERN:=UD-IQ4_XS/*.gguf}"
+: "${MODEL_ROOT:=/workspace/models/qwen38fn}"
+mkdir -p "$MODEL_ROOT"
+echo "Downloading $HF_REPO at $HF_REVISION ($HF_PATTERN) -> $MODEL_ROOT"
+hf download "$HF_REPO" --revision "$HF_REVISION" --include "$HF_PATTERN" --local-dir "$MODEL_ROOT"

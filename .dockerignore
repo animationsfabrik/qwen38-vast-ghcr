@@ -1,0 +1,4 @@
+.git
+models
+*.gguf
+__pycache__

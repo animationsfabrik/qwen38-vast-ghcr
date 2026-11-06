@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+: "${MODEL_DIR:=/workspace/models/qwen38fn/UD-IQ4_XS}"
+: "${MODEL_ALIAS:=qwen3.8-flash-next}"
+: "${HOST:=0.0.0.0}"
+: "${PORT:=8000}"
+: "${CONTEXT_SIZE:=32768}"
+: "${PARALLEL:=1}"
+if [[ "${DOWNLOAD_MODEL:-0}" == "1" ]]; then
+  qwen-download
+fi
+if [[ -n "${MODEL_FILE:-}" ]]; then
+  model="$MODEL_FILE"
+else
+  mapfile -t candidates < <(find "$MODEL_DIR" -maxdepth 1 -type f -name '*00001-of-*.gguf' | sort)
+  if [[ ${#candidates[@]} -ne 1 ]]; then
+    echo "Expected exactly one first GGUF shard in $MODEL_DIR, found ${#candidates[@]}." >&2
+    echo "Run qwen-download or set MODEL_FILE explicitly." >&2
+    exit 2
+  fi
+  model="${candidates[0]}"
+fi
+[[ -f "$model" ]] || { echo "Missing model file: $model" >&2; exit 2; }
+# Validate all shards before starting, fail fast on an incomplete download.
+name=$(basename "$model")
+if [[ "$name" =~ -00001-of-([0-9]+)\.gguf$ ]]; then
+  n=${BASH_REMATCH[1]}
+  prefix=${name%-00001-of-*}
+  for ((i=1; i<=10#$n; i++)); do
+    printf -v idx '%05d' "$i"
+    [[ -s "$(dirname "$model")/${prefix}-${idx}-of-${n}.gguf" ]] || {
+      echo "Missing or empty GGUF shard ${idx} of ${n}" >&2; exit 2;
+    }
+  done
+fi
+args=( -m "$model" --alias "$MODEL_ALIAS" --host "$HOST" --port "$PORT"
+       -ngl 999 --tensor-split 1,1,1,1 -c "$CONTEXT_SIZE" --parallel "$PARALLEL" --jinja )
+if [[ $# -gt 0 ]]; then args+=("$@"); fi
+echo "Starting Qwen model '$MODEL_ALIAS' on ${HOST}:${PORT}"
+exec /opt/qwen-llama/bin/llama-server "${args[@]}"
