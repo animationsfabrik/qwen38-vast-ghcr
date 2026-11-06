@@ -68,3 +68,4 @@ models:
 - First launch downloads ~93.7 GB and needs adequate bandwidth and disk. This is a runtime cost, not a GitHub Actions artifact.
 - `--tensor-split 1,1,1,1` is based on the documented four-RTX-3090 profile. Start at 32K context, then tune.
 # qwen38-vast-ghcr
+# qwen38-vast-ghcr
